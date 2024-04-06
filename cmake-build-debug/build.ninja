@@ -61,12 +61,6 @@ build CMakeFiles/gpu_raytracer.dir/third-party/gl.c.o: C_COMPILER__gpu_raytracer
   OBJECT_DIR = CMakeFiles/gpu_raytracer.dir
   OBJECT_FILE_DIR = CMakeFiles/gpu_raytracer.dir/third-party
 
-build CMakeFiles/gpu_raytracer.dir/src/Window.cpp.o: CXX_COMPILER__gpu_raytracer_unscanned_Debug /home/l4zy9uy/Desktop/c-c++/pet_project/gpu_raytracer/src/Window.cpp || cmake_object_order_depends_target_gpu_raytracer
-  DEP_FILE = CMakeFiles/gpu_raytracer.dir/src/Window.cpp.o.d
-  FLAGS = -g -std=gnu++23 -fdiagnostics-color=always
-  OBJECT_DIR = CMakeFiles/gpu_raytracer.dir
-  OBJECT_FILE_DIR = CMakeFiles/gpu_raytracer.dir/src
-
 build CMakeFiles/gpu_raytracer.dir/src/Vertex.cpp.o: CXX_COMPILER__gpu_raytracer_unscanned_Debug /home/l4zy9uy/Desktop/c-c++/pet_project/gpu_raytracer/src/Vertex.cpp || cmake_object_order_depends_target_gpu_raytracer
   DEP_FILE = CMakeFiles/gpu_raytracer.dir/src/Vertex.cpp.o.d
   FLAGS = -g -std=gnu++23 -fdiagnostics-color=always
@@ -87,7 +81,7 @@ build CMakeFiles/gpu_raytracer.dir/src/Shader.cpp.o: CXX_COMPILER__gpu_raytracer
 #############################################
 # Link the executable gpu_raytracer
 
-build gpu_raytracer: CXX_EXECUTABLE_LINKER__gpu_raytracer_Debug CMakeFiles/gpu_raytracer.dir/main.cpp.o CMakeFiles/gpu_raytracer.dir/third-party/gl.c.o CMakeFiles/gpu_raytracer.dir/src/Window.cpp.o CMakeFiles/gpu_raytracer.dir/src/Vertex.cpp.o CMakeFiles/gpu_raytracer.dir/src/Shader.cpp.o | /usr/lib/x86_64-linux-gnu/libglfw.so.3.3
+build gpu_raytracer: CXX_EXECUTABLE_LINKER__gpu_raytracer_Debug CMakeFiles/gpu_raytracer.dir/main.cpp.o CMakeFiles/gpu_raytracer.dir/third-party/gl.c.o CMakeFiles/gpu_raytracer.dir/src/Vertex.cpp.o CMakeFiles/gpu_raytracer.dir/src/Shader.cpp.o | /usr/lib/x86_64-linux-gnu/libglfw.so.3.3
   FLAGS = -g
   LINK_LIBRARIES = /usr/lib/x86_64-linux-gnu/libglfw.so.3.3
   OBJECT_DIR = CMakeFiles/gpu_raytracer.dir

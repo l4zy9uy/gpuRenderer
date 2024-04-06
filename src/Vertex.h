@@ -4,11 +4,12 @@
 
 #ifndef GPU_RAYTRACER_SRC_VERTEX_H
 #define GPU_RAYTRACER_SRC_VERTEX_H
-#include <glm/vec3.hpp>
+#include <glm/glm.hpp>
 
 struct Vertex {
   glm::vec3 position;
   glm::vec3 color;
+  glm::vec2 texture;
 };
 
 #endif //GPU_RAYTRACER_SRC_VERTEX_H
