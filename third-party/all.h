@@ -1,0 +1,7 @@
+//
+// Created by l4zy9uy on 4/7/24.
+//
+
+#ifndef GPU_RAYTRACER_THIRD_PARTY_ALL_H
+#define GPU_RAYTRACER_THIRD_PARTY_ALL_H
+#endif //GPU_RAYTRACER_THIRD_PARTY_ALL_H

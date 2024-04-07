@@ -94,17 +94,16 @@ int main()
     std::cout << "Failed to load texture" << std::endl;
   }
   stbi_image_free(data);
-
   unsigned int texture2;
   glGenTextures(1, &texture2);
   glBindTexture(GL_TEXTURE_2D, texture2);
 // set the texture wrapping/filtering options (on the currently bound texture object)
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);	// set texture wrapping to GL_REPEAT (default wrapping method)
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
   // set texture filtering parameters
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  data = stbi_load("../awesomeface.jpg", &width, &height, &nrChannels, 0);
+  data = stbi_load("../awesomeface.png", &width, &height, &nrChannels, 0);
   if (data != nullptr)
   {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
@@ -115,17 +114,25 @@ int main()
     std::cout << "Failed to load texture" << std::endl;
   }
   stbi_image_free(data);
+  //Texture texture1("../container.jpg");
+  //Texture texture2("../awesomeface.png");
   ourShader.use(); // don't forget to activate the shader before setting uniforms!
   glUniform1i(glGetUniformLocation(ourShader.getId(), "texture1"), 0); // set it manually
   ourShader.setInt("texture2", 1); // or with shader class
+  auto thirdParam = 0.0f;
   while(!glfwWindowShouldClose(window)) {
     processInput(window);
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+      thirdParam += 0.1;
+    else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+      thirdParam -= 0.1;
+    ourShader.setFloat("thirdParam", thirdParam);
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture1);
+    glBindTexture(GL_TEXTURE_2D, texture1);//.getId());
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, texture2);
+    glBindTexture(GL_TEXTURE_2D, texture2);//.getId());
     glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
 
     //ourShader.use(); // don't forget to activate the shader before setting uniforms!
