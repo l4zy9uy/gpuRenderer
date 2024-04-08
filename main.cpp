@@ -1,15 +1,11 @@
-
-#define STB_IMAGE_IMPLEMENTATION
 #include "third-party/gl.h"
 #include <GLFW/glfw3.h>
 #include <iostream>
-#include <glm/glm.hpp>
 #include <vector>
 #include "src/Vertex.h"
-#include <memory>
 #include "src/Shader.h"
 #include "src/Window.h"
-#include "third-party/stb_image.h"
+#include "src/Texture.h"
 //--------------------------------------------------------------------------------------------------------------------
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -20,7 +16,6 @@ int main()
 {
   init();
   // glfw window creation
-  // --------------------
   GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL",
                                         nullptr, nullptr);
   if (window == nullptr)
@@ -33,7 +28,6 @@ int main()
   glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
   // glad: load all OpenGL function pointers
-  // ---------------------------------------
   if (!gladLoadGL((GLADloadfunc )glfwGetProcAddress))
   {
     std::cout << "Failed to initialize GLAD" << std::endl;
@@ -63,62 +57,16 @@ int main()
 
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), nullptr);
   glEnableVertexAttribArray(0);
-
-  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(sizeof(glm::vec3)));//reinterpret_cast<void*>(sizeof(glm::vec3)));
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE,
+                        sizeof(Vertex), (void*)(sizeof(glm::vec3)));//reinterpret_cast<void*>(sizeof(glm::vec3)));
   glEnableVertexAttribArray(1);
-
-  unsigned int texture1;
-  glGenTextures(1, &texture1);
-  glBindTexture(GL_TEXTURE_2D, texture1);
-// set the texture wrapping/filtering options (on the currently bound texture object)
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
   glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE,
                         sizeof(Vertex), (void*)(2 * sizeof(glm::vec3)));
   glEnableVertexAttribArray(2);
-// load and generate the texture
-  int width, height, nrChannels;
-  stbi_set_flip_vertically_on_load(true);
-  auto data = stbi_load("../container.jpg", &width, &height, &nrChannels, 0);
 
-  if (data != nullptr)
-  {
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-  }
-  else
-  {
-    std::cout << "Failed to load texture" << std::endl;
-  }
-  stbi_image_free(data);
-  unsigned int texture2;
-  glGenTextures(1, &texture2);
-  glBindTexture(GL_TEXTURE_2D, texture2);
-// set the texture wrapping/filtering options (on the currently bound texture object)
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  // set texture filtering parameters
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  data = stbi_load("../awesomeface.png", &width, &height, &nrChannels, 0);
-  if (data != nullptr)
-  {
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-  }
-  else
-  {
-    std::cout << "Failed to load texture" << std::endl;
-  }
-  stbi_image_free(data);
-  //Texture texture1("../container.jpg");
-  //Texture texture2("../awesomeface.png");
-  ourShader.use(); // don't forget to activate the shader before setting uniforms!
-  glUniform1i(glGetUniformLocation(ourShader.getId(), "texture1"), 0); // set it manually
-  ourShader.setInt("texture2", 1); // or with shader class
+  Texture texture1("../cat2.jpg");
+  ourShader.use();
+  ourShader.setInt("texture1", 0);
   auto thirdParam = 0.0f;
   while(!glfwWindowShouldClose(window)) {
     processInput(window);
@@ -129,13 +77,8 @@ int main()
     ourShader.setFloat("thirdParam", thirdParam);
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture1);//.getId());
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, texture2);//.getId());
+    texture1.bind(0);
     glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
-
-    //ourShader.use(); // don't forget to activate the shader before setting uniforms!
     glDrawElements(GL_TRIANGLES, 6,  GL_UNSIGNED_INT, nullptr);
     glfwSwapBuffers(window);
     glfwPollEvents();

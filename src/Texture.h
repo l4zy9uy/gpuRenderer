@@ -11,10 +11,14 @@ class Texture {
 private:
   GLuint id_{};
 public:
-  GLuint getId() const;
-  void setId(GLuint Id);
+  [[nodiscard]] const GLuint & getId() const;
+  void setId(const GLuint &Id);
+  void bind(const GLuint &textureUnit) const;
 public:
   Texture(const std::string &filePath);
+  ~Texture();
+private:
+  static bool isPNG(const std::string& filename);
 };
 
 #endif //GPU_RAYTRACER_SRC_TEXTURE_H
