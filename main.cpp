@@ -6,6 +6,8 @@
 #include "src/Shader.h"
 #include "src/Window.h"
 #include "src/Texture.h"
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 //--------------------------------------------------------------------------------------------------------------------
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -35,12 +37,14 @@ int main()
   }
   Shader ourShader("../src/shader.vs", "../src/shader.fs");
   std::vector<Vertex> vertices {
-      {{0.5f, 0.5f, 0.0f}, {1, 0, 0}, {1.0f, 1.0f}},
-      {{0.5f, -0.5f, 0.0f}, {0, 1, 0}, {1.0f, 0.0f}},
-      {{-0.5f, -0.5f, 0.0f}, {0, 0, 1}, {0, 0}},
-      {{-0.5f,  0.5f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f}}
+      {{0.5f, 0.5f, 0.0f}, {1, 1, 1}, {1.0f, 1.0f}},
+      {{0.5f, -0.5f, 0.0f}, {1, 1, 1}, {1.0f, 0.0f}},
+      {{-0.5f, -0.5f, 0.0f}, {0, 0, 0}, {0, 0}},
+      {{-0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f}}
   };
   std::vector<glm::ivec3> indices {{2, 1, 0},
+                                   {2, 3, 0},
+                                   {2, 1, 0},
                                    {2, 3, 0}};
 
   GLuint VAO, VBO, EBO;
@@ -65,8 +69,10 @@ int main()
   glEnableVertexAttribArray(2);
 
   Texture texture1("../cat2.jpg");
+  Texture texture2("../awesomeface.png");
   ourShader.use();
   ourShader.setInt("texture1", 0);
+  ourShader.setInt("texture2", 1);
   auto thirdParam = 0.0f;
   while(!glfwWindowShouldClose(window)) {
     processInput(window);
@@ -77,8 +83,23 @@ int main()
     ourShader.setFloat("thirdParam", thirdParam);
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
+    glm::mat4 transform{1.0f}; // make sure to initialize matrix to identity matrix first
+    transform = glm::rotate(transform, static_cast<float>(glfwGetTime()), {0.0f, 0.0f, 1.0f});
+    transform = glm::translate(transform, {0.5f, -0.5f, 0.0f});
+
+    // get matrix's uniform location and set matrix
+    ourShader.use();
+    auto transformLoc = glGetUniformLocation(ourShader.getId(), "transform");
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(transform));
     texture1.bind(0);
+    texture2.bind(1);
     glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
+    glDrawElements(GL_TRIANGLES, 6,  GL_UNSIGNED_INT, nullptr);
+    transform = glm::mat4(1.0f); // reset it to identity matrix
+    transform = glm::translate(transform, glm::vec3(-0.5f, 0.5f, 0.0f));
+    auto scaleAmount = static_cast<float>(sin(glfwGetTime()));
+    transform = glm::scale(transform, glm::vec3(scaleAmount, scaleAmount, scaleAmount));
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, &transform[0][0]); // this time take the matrix value array's first element as its memory pointer value
     glDrawElements(GL_TRIANGLES, 6,  GL_UNSIGNED_INT, nullptr);
     glfwSwapBuffers(window);
     glfwPollEvents();
