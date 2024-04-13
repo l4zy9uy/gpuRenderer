@@ -15,6 +15,8 @@ add_executable(gpu_raytracer main.cpp third-party/gl.h third-party/gl.c
         src/Texture.cpp
         src/Texture.h
         third-party/stb_image.h
+        src/Camera.cpp
+        src/Camera.h
 )
 
 target_link_libraries(gpu_raytracer glfw)

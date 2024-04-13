@@ -16,7 +16,9 @@ Texture::Texture(const std::string &filePath) {
 // set the texture wrapping/filtering options (on the currently bound texture object)
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D,
+                  GL_TEXTURE_MIN_FILTER,
+                  GL_LINEAR_MIPMAP_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 // load and generate the texture
@@ -24,21 +26,28 @@ Texture::Texture(const std::string &filePath) {
   stbi_set_flip_vertically_on_load(true);
   auto data = stbi_load(filePath.c_str(), &width, &height, &nrChannels, 0);
 
-  if (data != nullptr)
-  {
+  if (data != nullptr) {
     int format;
-    if(isPNG(filePath)) format = GL_RGBA;
-    else format = GL_RGB;
-    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+    if (isPNG(filePath))
+      format = GL_RGBA;
+    else
+      format = GL_RGB;
+    glTexImage2D(GL_TEXTURE_2D,
+                 0,
+                 format,
+                 width,
+                 height,
+                 0,
+                 format,
+                 GL_UNSIGNED_BYTE,
+                 data);
     glGenerateMipmap(GL_TEXTURE_2D);
-  }
-  else
-  {
+  } else {
     std::cout << "Failed to load texture\n";
   }
   stbi_image_free(data);
 }
-const GLuint & Texture::getId() const {
+const GLuint &Texture::getId() const {
   return id_;
 }
 void Texture::setId(const GLuint &Id) {
@@ -61,6 +70,7 @@ bool Texture::isPNG(const std::string &filename) {
   std::vector<char> signature(8);
   file.read(signature.data(), 8);
 
-  return signature == std::vector<char>{'\x89', 'P', 'N', 'G', '\r', '\n', '\x1a', '\n'};
+  return signature
+      == std::vector<char>{'\x89', 'P', 'N', 'G', '\r', '\n', '\x1a', '\n'};
 
 }

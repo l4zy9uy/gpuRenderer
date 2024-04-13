@@ -7,21 +7,27 @@
 
 #include <string>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+
 class Shader {
 private:
   GLuint id_;
 public:
   // constructor reads and builds the shader
   Shader(const std::string &vertexPath, const std::string &fragmentPath);
-  [[nodiscard]] const GLuint & getId() const;
+  [[nodiscard]] const GLuint &getId() const;
   void setId(const GLuint &Id);
   // use/activate the shader
   void use() const;
-  void clear();
+  void clear() const;
   // utility uniform functions
-  void setBool(const std::string &name, bool value) const;
-  void setInt(const std::string &name, int value) const;
-  void setFloat(const std::string &name, float value) const;
+  void setBool(const std::string &name, const bool &value) const;
+  void setInt(const std::string &name, const int &value) const;
+  void setFloat(const std::string &name, const float &value) const;
+  void setMatrix4x4(const std::string &name, const glm::mat4 &mat) const;
+  void setVector4f(const std::string &name, const glm::vec4 &vec) const;
+  void setVector3f(const std::string &name, const glm::vec3 &vec) const;
+  void setVector2f(const std::string &name, const glm::vec2  &vec) const;
 };
 
 #endif //GPU_RAYTRACER_SRC_SHADER_H
