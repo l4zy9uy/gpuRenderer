@@ -9,6 +9,10 @@ uniform float iTime;
 out vec4 fragColor;
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 vec2 fragCoord = gl_FragCoord.xy;
+struct Material {
+    int type;
+    vec3 albedo;
+};
 struct Ray {
     vec3 origin;
     vec3 direction;
@@ -16,12 +20,14 @@ struct Ray {
 struct Hit_record {
     vec3 p;
     vec3 normal;
+    Material mat;
     float t;
     bool front_face;
 };
 struct Sphere {
     vec3 center;
     float radius;
+    Material mat;
 };
 struct Interval {
     float min;
@@ -46,9 +52,13 @@ const float INFINITY = 2147483647.0;
 const int RAND_MAX = 2147483647;
 const int MAX_OBJECT = 16;
 Sphere objects[MAX_OBJECT];
-const Interval interval_empty = Interval(+INFINITY, -INFINITY);
-const Interval interval_universe = Interval(-INFINITY, +INFINITY);
+const Interval Interval_empty = Interval(+INFINITY, -INFINITY);
+const Interval Interval_universe = Interval(-INFINITY, +INFINITY);
+const int Lambertian = 0;
+const int Metal = 1;
 int current_num_object = 0;
+float g_seed = 0.;
+
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 vec3 at(in Ray ray, in float t);
 vec3 ray_color(in Ray r, in int num_sphere);
@@ -61,106 +71,36 @@ bool surround(in Interval interval, in float x);
 float clamp(in Interval interval, in float x);
 void initialize_camera(inout Camera camera);
 void render(inout Camera camera);
-vec3 sample_square();
 Ray get_ray(inout Camera camera);
+vec3 random(in float min, in float max);
+vec3 random_in_unit_sphere(inout float seed);
+float linear_to_gamma(in float linear_component);
+bool material_scatter(in Ray r_in, in Hit_record rec, inout vec3 attenuation, inout Ray scattered);
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
-#if 1
-//Modified from: iq's "Integer Hash - III" (https://www.shadertoy.com/view/4tXyWN)
-uint baseHash(uvec3 p)
-{
-    p = 1103515245U*((p.xyz >> 1U)^(p.yzx));
-    uint h32 = 1103515245U*((p.x^p.z)^(p.y>>3U));
+
+uint base_hash(uvec2 p) {
+    p = 1103515245U*((p >> 1U)^(p.yx));
+    uint h32 = 1103515245U*((p.x)^(p.y>>3U));
     return h32^(h32 >> 16);
 }
 
-uint baseHash(uint p)
-{
-    p = 1103515245U*((p >> 1U)^(p));
-    uint h32 = 1103515245U*((p)^(p>>3U));
-    return h32^(h32 >> 16);
-}
-#else
-//XXHash32 based (https://github.com/Cyan4973/xxHash)
-uint baseHash(uvec3 p)
-{
-    const uint PRIME32_2 = 2246822519U, PRIME32_3 = 3266489917U;
-    const uint PRIME32_4 = 668265263U, PRIME32_5 = 374761393U;
-    uint h32 =  p.z + PRIME32_5 + p.x*PRIME32_3;
-    h32 = PRIME32_4*((h32 << 17) | (h32 >> (32 - 17)));
-    h32 += p.y * PRIME32_3;
-    h32 = PRIME32_4*((h32 << 17) | (h32 >> (32 - 17))); //Initial testing suggests this line could be omitted for extra perf
-    h32 = PRIME32_2*(h32^(h32 >> 15));
-    h32 = PRIME32_3*(h32^(h32 >> 13));
-    return h32^(h32 >> 16);
-}
-
-uint baseHash(uint p)
-{
-    const uint PRIME32_2 = 2246822519U, PRIME32_3 = 3266489917U;
-    const uint PRIME32_4 = 668265263U, PRIME32_5 = 374761393U;
-    uint h32 = p + PRIME32_5;
-    h32 = PRIME32_4*((h32 << 17) | (h32 >> (32 - 17))); //Initial testing suggests this line could be omitted for extra perf
-    h32 = PRIME32_2*(h32^(h32 >> 15));
-    h32 = PRIME32_3*(h32^(h32 >> 13));
-    return h32^(h32 >> 16);
-}
-#endif
-
-//---------------------3D input---------------------
-float hash13(uvec3 x)
-{
-    uint n = baseHash(x);
+float hash1(inout float seed) {
+    uint n = base_hash(floatBitsToUint(vec2(seed+=.1,seed+=.1)));
     return float(n)*(1.0/float(0xffffffffU));
 }
 
-vec2 hash23(uvec3 x)
-{
-    uint n = baseHash(x);
-    uvec2 rz = uvec2(n, n*48271U); //see: http://random.mat.sbg.ac.at/results/karl/server/node4.html
-    return vec2((rz.xy >> 1) & uvec2(0x7fffffffU))/float(0x7fffffff);
+vec2 hash2(inout float seed) {
+    uint n = base_hash(floatBitsToUint(vec2(seed+=.1,seed+=.1)));
+    uvec2 rz = uvec2(n, n*48271U);
+    return vec2(rz.xy & uvec2(0x7fffffffU))/float(0x7fffffff);
 }
 
-vec3 hash33(uvec3 x)
-{
-    uint n = baseHash(x);
-    uvec3 rz = uvec3(n, n*16807U, n*48271U); //see: http://random.mat.sbg.ac.at/results/karl/server/node4.html
-    return vec3((rz >> 1) & uvec3(0x7fffffffU))/float(0x7fffffff);
+vec3 hash3(inout float seed) {
+    uint n = base_hash(floatBitsToUint(vec2(seed+=.1,seed+=.1)));
+    uvec3 rz = uvec3(n, n*16807U, n*48271U);
+    return vec3(rz & uvec3(0x7fffffffU))/float(0x7fffffff);
 }
 
-vec4 hash43(uvec3 x)
-{
-    uint n = baseHash(x);
-    uvec4 rz = uvec4(n, n*16807U, n*48271U, n*69621U); //see: http://random.mat.sbg.ac.at/results/karl/server/node4.html
-    return vec4((rz >> 1) & uvec4(0x7fffffffU))/float(0x7fffffff);
-}
-
-//---------------------1D input---------------------
-float hash11(uint x)
-{
-    uint n = baseHash(x);
-    return float(n)*(1.0/float(0xffffffffU));
-}
-
-vec2 hash21(uint x)
-{
-    uint n = baseHash(x);
-    uvec2 rz = uvec2(n, n*48271U); //see: http://random.mat.sbg.ac.at/results/karl/server/node4.html
-    return vec2((rz.xy >> 1) & uvec2(0x7fffffffU))/float(0x7fffffff);
-}
-
-vec3 hash31(uint x)
-{
-    uint n = baseHash(x);
-    uvec3 rz = uvec3(n, n*16807U, n*48271U); //see: http://random.mat.sbg.ac.at/results/karl/server/node4.html
-    return vec3((rz >> 1) & uvec3(0x7fffffffU))/float(0x7fffffff);
-}
-
-vec4 hash41(uint x)
-{
-    uint n = baseHash(x);
-    uvec4 rz = uvec4(n, n*16807U, n*48271U, n*69621U); //see: http://random.mat.sbg.ac.at/results/karl/server/node4.html
-    return vec4((rz >> 1) & uvec4(0x7fffffffU))/float(0x7fffffff);
-}
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 float degrees_to_radians(in float degrees) {
     return degrees * PI / 180.0;
@@ -168,16 +108,12 @@ float degrees_to_radians(in float degrees) {
 
 float random_float() {
     // Returns a random real in [0,1).
-    return hash11(int(fragCoord.x)) / (RAND_MAX);
+    return hash1(g_seed) / (RAND_MAX);
 }
 
 float random_float(in float min, in float max) {
     // Returns a random real in [min,max).
     return float(min + (max-min)*random_float());
-}
-vec3 sample_square() {
-    // Returns the vector to a random point in the [-.5,-.5]-[+.5,+.5] unit square.
-    return vec3(random_float() - 0.5, random_float() - 0.5, 0);
 }
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 vec3 at(in Ray ray, in float t) {
@@ -185,14 +121,32 @@ vec3 at(in Ray ray, in float t) {
 }
 
 vec3 ray_color(in Ray r, in int num_sphere) {
-    Hit_record rec;
-    if (hit_world(r, Interval(0.0, INFINITY), rec, num_sphere)) {
-        return 0.5 * (rec.normal + vec3(1,1,1));
-    }
+    vec3 col = vec3(1);
+    int depth = 4;
 
-    vec3 unit_direction = normalize(r.direction);
-    float a = 0.5*unit_direction.y + 1.0;
-    return (1.0-a)*vec3(1.0, 1.0, 1.0) + a*vec3(0.5, 0.7, 1.0);
+    for (int i = 0; i < depth; i++) {
+        Hit_record rec;
+        if (hit_world(r, Interval(0.01, INFINITY), rec, num_sphere)) {
+            Ray scattered;
+            vec3 attenuation;
+            vec3 direction = normalize(rec.normal + random_in_unit_sphere(g_seed));
+//            col *= 0.5;
+//            r = Ray(rec.p, direction); // Update the ray for the next iteration
+            if(material_scatter(r, rec, attenuation, scattered)) {
+                col *= attenuation;
+                r = scattered;
+            }
+            else return vec3(0);
+        } else {
+            float t = .5*r.direction.y + .5;
+            col *= mix(vec3(1),vec3(.5,.7,1), t);
+            return col;
+        }
+    }
+    col = vec3(linear_to_gamma(col.r),
+                linear_to_gamma(col.g),
+                linear_to_gamma(col.b));
+    return col;
 }
 
 bool hit_sphere(in Sphere sphere, in Ray r, in Interval ray_t, inout Hit_record rec) {
@@ -219,7 +173,7 @@ bool hit_sphere(in Sphere sphere, in Ray r, in Interval ray_t, inout Hit_record 
     rec.p = at(r, rec.t);
     vec3 outward_normal = (rec.p - sphere.center) / sphere.radius;
     set_face_normal(rec, r, outward_normal);
-
+    rec.mat = sphere.mat;
     return true;
 }
 
@@ -241,20 +195,8 @@ bool hit_world(in Ray r, in Interval ray_t, inout Hit_record rec, in int num_sph
     }
     return hit_anything;
 }
-
-float size(in Interval interval) {
-    return interval.max - interval.min;
-}
-bool contain(in Interval interval, in float x) {
-    return interval.min <= x && x <= interval.max;
-}
 bool surround(in Interval interval, in float x) {
     return interval.min < x && x < interval.max;
-}
-float clamp(in Interval interval, in float x) {
-    if (x < interval.min) return interval.min;
-    if (x > interval.max) return interval.max;
-    return x;
 }
 void initialize_camera(inout Camera camera) {
     camera.aspect_ratio = iResolution.x / iResolution.y;
@@ -286,17 +228,56 @@ void render(inout Camera camera) {
     fragColor = vec4(pixel_color * camera.pixel_sample_scale, 1.0);
 }
 Ray get_ray(inout Camera camera) {
-    vec3 offset = hash31(int(fragCoord.x*10));
+    vec3 offset = hash3(g_seed);
     vec3 pixel_sample = camera.pixel00_loc + ((fragCoord.x + offset.x) * camera.pixel_delta_u) + ((fragCoord.y + offset.y) * camera.pixel_delta_v);
     vec3 ray_origin = camera.center;
     vec3 ray_direction = pixel_sample - ray_origin;
     return Ray(ray_origin, ray_direction);
 }
+vec3 random(in float min, in float max) {
+    return vec3(random_float(min, max), random_float(min, max), random_float(min, max));
+}
+
+vec3 random_in_unit_sphere(inout float seed) {
+    vec3 h = hash3(seed) * vec3(2.,6.28318530718,1.)-vec3(1,0,0);
+    float phi = h.y;
+    float r = pow(h.z, 1./3.);
+    return r * vec3(sqrt(1.-h.x*h.x)*vec2(sin(phi),cos(phi)),h.x);
+}
+float linear_to_gamma(float linear_component)
+{
+    if (linear_component > 0)
+        return sqrt(linear_component);
+
+    return 0;
+}
+bool material_scatter(in Ray r_in, in Hit_record rec, inout vec3 attenuation, inout Ray scattered) {
+    if(rec.mat.type == Lambertian) {
+        vec3 scatter_direction = rec.normal + random_in_unit_sphere(g_seed);
+        scattered = Ray(rec.p, scatter_direction);
+        attenuation = rec.mat.albedo;
+        return true;
+    }
+    else if(rec.mat.type == Metal) {
+        vec3 reflected = reflect(r_in.direction, rec.normal);
+        scattered = Ray(rec.p, reflected);
+        attenuation = rec.mat.albedo;
+        return true;
+    }
+    return false;
+}
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 void main() {
-    objects[0] = Sphere(vec3(0, 0, -1), 0.5);
-    objects[1] = Sphere(vec3(0, -100.5, -1), 100);
-    current_num_object = 2;
+    Material mat_ground = Material(0, vec3(0.8f, 0.8f, 0.0f));
+    Material mat_center = Material(0, vec3(0.1f, 0.2f, 0.5f));
+    Material mat_left = Material(1, vec3(0.8f));
+    Material mat_right = Material(1, vec3(0.8f, 0.6f, 0.2f));
+    objects[0] = Sphere(vec3(0, -100.5, -1), 100, mat_ground);
+    objects[1] = Sphere(vec3(0, 0, -1.2), 0.5, mat_center);
+    objects[2] = Sphere(vec3(-1, 0, -1), 0.5, mat_left);
+    objects[3] = Sphere(vec3(1, 0, -1), 0.5, mat_right);
+
+    current_num_object = 4;
     Camera cam;
     cam.sample_per_pixel = 200;
     initialize_camera(cam);
